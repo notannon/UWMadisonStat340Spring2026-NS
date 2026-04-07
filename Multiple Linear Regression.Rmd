@@ -1,0 +1,134 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```[3]
+Materials used
+S09_multiple.pdf
+https://brianreedpowers.github.io/stat340/prediction2.html
+```
+
+
+# Multi Linear Regression
+
+```{r}
+data(mtcars)
+
+mtc_model <- lm(qsec ~ 1 + disp + hp + wt, data = mtcars)
+summary(mtc_model)
+
+```
+
+```[3]
+Estimate: Fitted Coefficients
+PT(>|t|): p-value for testing wheather each coffeceient is 0
+Residual Standard error: model's typical prediction error size
+Multiple R Squared: Proportion of variation explained
+F-Statistic: Whether the model as a whole explains anything beyond the intercept only model
+
+For wt, holding disp and hp fixed. A 1 unit increase in wt is associated with an average increase of about 1.49 in qsec
+
+T- value -> estimate / std.error for disp is -1.59. A bigger t-value stronger evidence that the coefficient is not 0.
+
+RSE: The models prediction errors are typically 1.062 seconds
+Degrees of Freedom: n is 32, minus 3 predictors + 1 intercept is 28
+Multiple R-Squared: About 68% of the variability in qsec is explained by the model using dsip, hp, and wt
+F-Statistic: F is 19.91 with a p-value of 4.134 so we reject the null and conclude the model as a whole has signficant explanatory power. And using the variables is much better then using no predictors at all.
+
+We emphasize that the model is usefull overall. But that disp is not useful in the model once hp and wt are already in the model.
+
+qsec = 17.965 - 0.00662(disp) - 0.02295(hp) + 1.485(wt)
+```
+
+# 2. Checking assumptions with residuals
+
+```{r}
+par(mfrow = c(2,2))
+plot(mtc_model)
+par(mfrow = c(1,1))
+```
+
+```[3]
+Residuals vs Fitted (top left)
+We are checking linearity and mean of residuals roughly equals 0 with no systemic pattern
+
+The points are mostly scattered aroound 0, the red line has a slight downward pattern with slight curvature
+There is no strong violation but suggests possible mild nonlinearity
+Acceptable for the class
+
+Q-Q Plot (top right)
+Checks if residuals are normally distributed
+
+Middle points lie close to the line
+The tails deviate which suggest slight non-normality, especially in the extremes
+Normalality assumption isn't perfect but still acceptable for most cases
+But be careful with p-values if deviations are too large
+
+Scale Location (bottom left)
+Homoscadestacity
+
+Curved uowards, spread increases a bit for higher fitted values
+
+Mild heteroscadasticity, variance slightly increases as fitted values increase
+But not severe, still acceptable
+
+Residuals vs Leverage (bottom right)
+Influenctial Points
+
+Most points clustered low-average -> normal
+A few labeled points (Maserati Bora) -> (~0.5) abd (Merc 230) -> Large residuals
+Cook's distance lines shown (dashed)
+```
+
+# Categorical predictors with two levels 
+
+```{r}
+data(mtcars)
+
+mtcars$am <- factor(mtcars$am) # automatic = 0, manual = 1
+mtcars$vs <- factor(mtcars$vs) # v-shaped = 0, straight = 1
+
+cat_model <- lm(qsec ~ 1 + am + vs, data = mtcars)
+summary(cat_model)
+```
+
+# Interactions between two catagorical predictors
+
+```{r}
+## am:vs = interaction only 
+## am * vs = main effect plus interactions
+library(interactions)
+
+
+interact_model <- lm(qsec ~ 1 + am * vs, data = mtcars)
+summary(interact_model)
+
+cat_plot(interact_model,
+         pred = "vs",
+         modx = "am",
+         geom = "line",
+         plot.points = TRUE,
+         data = mtcars,
+         interval = FALSE)
+```
+```[3]
+Looking at am1:vs1, we can look at the combined effect of being in both categorical values together. 
+am1 = manual, and vs1 = staight engine. For cars that are both, the predicted qseec is .07 higher then what you would expect from just adding the seperate main effects of am and vs alone. But it is not significant, p-value .91% so a simpler model qsec ~ am + vs is sufficient
+```
+
+# To do 
+
+```[3]
+1. Categorical predictors with more than two levels
+2. Interaction examples where interaction matters
+3. Non-linear relationships: adding a squared term
+4. Practice-Page comparison: better predictor in simple regression
+5. Pratice-page nonlinear idea: geometry intuition
+6. A clean workflow for any STAT340 regression problem
+7. Common exam traps
+8. Full Script
+9. What each example is teaching us
+```
+
+
