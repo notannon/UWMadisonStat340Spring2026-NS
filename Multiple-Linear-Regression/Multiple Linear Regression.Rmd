@@ -81,7 +81,7 @@ A few labeled points (Maserati Bora) -> (~0.5) abd (Merc 230) -> Large residuals
 Cook's distance lines shown (dashed)
 ```
 
-# Categorical predictors with two levels 
+# 3. Categorical predictors with two levels 
 
 ```{r}
 data(mtcars)
@@ -93,7 +93,7 @@ cat_model <- lm(qsec ~ 1 + am + vs, data = mtcars)
 summary(cat_model)
 ```
 
-# Interactions between two catagorical predictors
+# 4. Interactions between two catagorical predictors
 
 ```{r}
 ## am:vs = interaction only 
@@ -116,6 +116,277 @@ cat_plot(interact_model,
 Looking at am1:vs1, we can look at the combined effect of being in both categorical values together. 
 am1 = manual, and vs1 = staight engine. For cars that are both, the predicted qseec is .07 higher then what you would expect from just adding the seperate main effects of am and vs alone. But it is not significant, p-value .91% so a simpler model qsec ~ am + vs is sufficient
 ```
+# 5. Categorical predictors with more than two levels
+
+```{r}
+data(iris)
+
+iris$Species <- factor(iris$Species, levels = c("setosa", "versicolor", "virginica"))
+
+sepal.fit <- lm(Sepal.Length ~ 1 + Species, data = iris)
+summary(sepal.fit)
+
+# check the means for each dummy
+aggregate(Sepal.Length ~ Species, data = iris, FUN = mean)
+
+# see the dummy vars
+model.matrix(sepal.fit)[1:10, ]
+```
+```[3]
+Setosa is the baseline so the intercept is the mean sepal length for setosa
+
+Speciesversicolor = difference between versicolor and setosa
+Speciesviginica = difference between virginica and setosa
+
+So 
+Setosa: 5.006
+Versicolor: 5.006 + 0.96 = 5.936
+Virginica: 5.006 + 1.582 = 6.588
+```
+
+# 6. Interaction example where interaction matters
+
+```{r}
+set.seed(340)
+
+Food <- factor(rep(c("Hot Dog", "Ice Cream"), each = 40))
+Condiment <- factor(rep(rep(c("Chocolate", "Mustard"), each = 20), 2))
+
+# Build a strong interaction:
+# Hot Dog + Mustard high
+# Ice Cream + Chocolate high
+Enjoyment <- c(
+  rnorm(20, mean = 65, sd = 4),   # Hot Dog + Chocolate
+  rnorm(20, mean = 90, sd = 4),   # Hot Dog + Mustard
+  rnorm(20, mean = 92, sd = 4),   # Ice Cream + Chocolate
+  rnorm(20, mean = 62, sd = 4)    # Ice Cream + Mustard
+)
+
+frost_like <- data.frame(Food, Condiment, Enjoyment)
+
+# No interaction
+m1 <- lm(Enjoyment ~ 1 + Food + Condiment, data = frost_like)
+summary(m1)
+
+# With interaction
+m2 <- lm(Enjoyment ~ 1 + Food * Condiment, data = frost_like)
+summary(m2)
+```
+
+```[3]
+What we see in the interaction between Ice Cream and Mustard
+In m1, we see that it is misleading because we are averaging between two opposite patterns
+In m2, we see that the interaction terms are significant because the condiment effect flips depending on the food
+
+In simple terms we can see that becayse the best condiment depends on the food. Without interaction both main effects can look non-significant; once the interaction is added, everything becomes signficant. 
+```
+
+# 7. Nonlinear relationships: adding a squared term
+
+```{r}
+plot(mtcars$hp, mtcars$mpg,
+     main = "mpg vs hp",
+     xlab = "hp", ylab = "mpg")
+
+# Linear model
+mtc_lm <- lm(mpg ~ 1 + hp, data = mtcars)
+summary(mtc_lm)
+
+par(mfrow = c(1, 2))
+plot(fitted(mtc_lm), resid(mtc_lm),
+     main = "Residuals vs Fitted: linear",
+     xlab = "Fitted values", ylab = "Residuals")
+abline(h = 0, lty = 2)
+
+# Quadratic model
+mtc_lm2 <- lm(mpg ~ 1 + hp + I(hp^2), data = mtcars)
+summary(mtc_lm2)
+
+plot(fitted(mtc_lm2), resid(mtc_lm2),
+     main = "Residuals vs Fitted: quadratic",
+     xlab = "Fitted values", ylab = "Residuals")
+abline(h = 0, lty = 2)
+par(mfrow = c(1, 1))
+```
+```{r}
+plot(mtcars$hp, mtcars$mpg,
+     xlab = "hp", ylab = "mpg",
+     main = "Linear vs quadratic fit")
+
+hp_grid <- seq(min(mtcars$hp), max(mtcars$hp), length.out = 200)
+
+lines(hp_grid,
+      predict(mtc_lm, newdata = data.frame(hp = hp_grid)),
+      lwd = 2)
+
+lines(hp_grid,
+      predict(mtc_lm2, newdata = data.frame(hp = hp_grid)),
+      lwd = 2, lty = 2)
+```
+
+```[3]
+Looking at MPG we can see that the relationship is curved. MPG drops quickly at first then levels off. The fix is to adda quadratic term using I(hp^2)
+```
+
+# 8. Practice: better predictor in simple regression
+
+```{r}
+data(trees)
+
+ht_lm <- lm(Volume ~ 1 + Height, data = trees)
+gr_lm <- lm(Volume ~ 1 + Girth, data = trees)
+
+summary(ht_lm)
+summary(gr_lm)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+
+plot(trees$Height, trees$Volume,
+     main = "Volume vs Height",
+     xlab = "Height", ylab = "Volume")
+abline(ht_lm, lwd = 2)
+
+plot(trees$Girth, trees$Volume,
+     main = "Volume vs Girth",
+     xlab = "Girth", ylab = "Volume")
+abline(gr_lm, lwd = 2)
+
+par(mfrow = c(1, 1))
+```
+# 9. Practice non-linear: geometry intuition
+
+```{r}
+gr_sq_lm <- lm(Volume ~ 1 + Girth + I(Girth^2), data = trees)
+
+summary(gr_lm)
+summary(gr_sq_lm)
+
+anova(gr_lm, gr_sq_lm)
+```
+# 10. Clean workflow for and Stat 340 problem
+
+```{r}
+### STAT 340 Multiple Regression Walkthrough
+
+### 1) Main multiple regression example
+data(mtcars)
+mtc_model <- lm(qsec ~ 1 + disp + hp + wt, data = mtcars)
+summary(mtc_model)
+
+par(mfrow = c(2, 2))
+plot(mtc_model)
+par(mfrow = c(1, 1))
+
+rss <- sum(resid(mtc_model)^2)
+n <- nrow(mtcars)
+p <- 3
+rse <- sqrt(rss / (n - (p + 1)))
+rss
+rse
+summary(mtc_model)$r.squared
+summary(mtc_model)$adj.r.squared
+summary(mtc_model)$fstatistic
+
+### 2) R^2 and correlation
+mt.fit <- lm(hp ~ 1 + wt, data = mtcars)
+summary(mt.fit)$r.squared
+cor(mtcars$wt, mtcars$hp)^2
+
+mt.fit2 <- lm(qsec ~ 1 + disp + wt + hp, data = mtcars)
+summary(mt.fit2)$r.squared
+cor(mtcars$qsec, predict(mt.fit2))^2
+
+### 3) Categorical predictors and interaction
+mtcars$am <- factor(mtcars$am)
+mtcars$vs <- factor(mtcars$vs)
+
+cat_model <- lm(qsec ~ 1 + am + vs, data = mtcars)
+summary(cat_model)
+
+interact_model <- lm(qsec ~ 1 + am * vs, data = mtcars)
+summary(interact_model)
+
+# Optional:
+# library(interactions)
+# cat_plot(interact_model, pred = "vs", modx = "am",
+#          geom = "line", plot.points = TRUE,
+#          data = mtcars, interval = FALSE)
+
+### 4) Multiple categorical levels
+data(iris)
+iris$Species <- factor(iris$Species,
+                       levels = c("setosa", "versicolor", "virginica"))
+
+sepal.fit <- lm(Sepal.Length ~ 1 + Species, data = iris)
+summary(sepal.fit)
+aggregate(Sepal.Length ~ Species, data = iris, FUN = mean)
+model.matrix(sepal.fit)[1:10, ]
+
+### 5) Interaction example with simulated food/condiment data
+set.seed(340)
+Food <- factor(rep(c("Hot Dog", "Ice Cream"), each = 40))
+Condiment <- factor(rep(rep(c("Chocolate", "Mustard"), each = 20), 2))
+Enjoyment <- c(
+  rnorm(20, mean = 65, sd = 4),
+  rnorm(20, mean = 90, sd = 4),
+  rnorm(20, mean = 92, sd = 4),
+  rnorm(20, mean = 62, sd = 4)
+)
+frost_like <- data.frame(Food, Condiment, Enjoyment)
+
+m1 <- lm(Enjoyment ~ 1 + Food + Condiment, data = frost_like)
+m2 <- lm(Enjoyment ~ 1 + Food * Condiment, data = frost_like)
+summary(m1)
+summary(m2)
+
+### 6) Nonlinear relationship
+plot(mtcars$hp, mtcars$mpg, xlab = "hp", ylab = "mpg")
+
+mtc_lm <- lm(mpg ~ 1 + hp, data = mtcars)
+mtc_lm2 <- lm(mpg ~ 1 + hp + I(hp^2), data = mtcars)
+
+summary(mtc_lm)
+summary(mtc_lm2)
+
+par(mfrow = c(1, 2))
+plot(fitted(mtc_lm), resid(mtc_lm),
+     main = "Linear residuals", xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2)
+
+plot(fitted(mtc_lm2), resid(mtc_lm2),
+     main = "Quadratic residuals", xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2)
+par(mfrow = c(1, 1))
+
+plot(mtcars$hp, mtcars$mpg, xlab = "hp", ylab = "mpg")
+hp_grid <- seq(min(mtcars$hp), max(mtcars$hp), length.out = 200)
+lines(hp_grid, predict(mtc_lm, newdata = data.frame(hp = hp_grid)), lwd = 2)
+lines(hp_grid, predict(mtc_lm2, newdata = data.frame(hp = hp_grid)), lwd = 2, lty = 2)
+
+### 7) Practice page: trees example
+data(trees)
+ht_lm <- lm(Volume ~ 1 + Height, data = trees)
+gr_lm <- lm(Volume ~ 1 + Girth, data = trees)
+summary(ht_lm)
+summary(gr_lm)
+
+par(mfrow = c(1, 2))
+plot(trees$Height, trees$Volume, main = "Volume vs Height",
+     xlab = "Height", ylab = "Volume")
+abline(ht_lm, lwd = 2)
+
+plot(trees$Girth, trees$Volume, main = "Volume vs Girth",
+     xlab = "Girth", ylab = "Volume")
+abline(gr_lm, lwd = 2)
+par(mfrow = c(1, 1))
+
+gr_sq_lm <- lm(Volume ~ 1 + Girth + I(Girth^2), data = trees)
+summary(gr_sq_lm)
+anova(gr_lm, gr_sq_lm)
+```
+
 
 # To do 
 
